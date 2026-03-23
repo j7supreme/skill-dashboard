@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Skill Dashboard</title>
+  <meta name="description" content="Manage your installed agent skills — view, group, update, and uninstall from one place." />
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- Top Bar -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <div class="logo">
+        <span class="logo-icon">⚡</span>
+        <span class="logo-text">Skill Dashboard</span>
+      </div>
+    </div>
+    <div class="topbar-center">
+      <div class="search-wrap">
+        <input id="search" class="search-input" type="text" placeholder="Search skills…" autocomplete="off" />
+        <button class="search-clear" id="searchClear" aria-label="Clear search">×</button>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <div class="view-toggle" role="group" aria-label="View mode">
+        <button class="view-btn active" id="btnGrid" title="Grid view" aria-pressed="true">⊞</button>
+        <button class="view-btn" id="btnList" title="List view" aria-pressed="false">☰</button>
+      </div>
+      <div class="sort-wrap">
+        <label for="agentSelect" class="sr-only">Filter by Agent</label>
+        <select id="agentSelect" class="sort-select" aria-label="Filter by Agent">
+          <option value="all">All Agents</option>
+        </select>
+      </div>
+      <div class="group-wrap">
+        <label for="functionSelect" class="sr-only">Filter by Function</label>
+        <select id="functionSelect" class="sort-select" aria-label="Filter by Function">
+          <option value="all">All Functions</option>
+        </select>
+      </div>
+      <div class="sort-wrap">
+        <label for="sortSelect" class="sr-only">Sort by Install Time</label>
+        <select id="sortSelect" class="sort-select" aria-label="Sort skills">
+          <option value="newest">Newest installed</option>
+          <option value="oldest">Oldest installed</option>
+          <option value="name">Name A–Z</option>
+        </select>
+      </div>
+    </div>
+    <div class="global-actions">
+      <button class="btn btn-outline icon-btn" id="refreshBtn" title="Refresh skills">↺</button>
+      <button class="btn btn-outline icon-btn" id="themeBtn" title="Toggle light/dark">◑</button>
+    </div>
+  </header>
+
+  <!-- Scope Tabs -->
+  <div class="scope-tabs" role="tablist" aria-label="Skill scope">
+    <button class="tab active" id="tabGlobal" role="tab" aria-selected="true" data-scope="global">Global Skills <span class="tab-count" id="countGlobal">—</span></button>
+    <button class="tab" id="tabProject" role="tab" aria-selected="false" data-scope="project">Project Skills <span class="tab-count" id="countProject">—</span></button>
+  </div>
+
+  <!-- Main -->
+  <main class="main">
+    <div id="loadingState" class="loading-state">
+      <div class="spinner"></div>
+      <p>Loading skills…</p>
+    </div>
+    <div id="emptyState" class="empty-state hidden">
+      <p class="empty-icon">🌵</p>
+      <p class="empty-text">No skills found</p>
+      <p class="empty-sub">Try a different search or install a skill with <code>npx skills add …</code></p>
+    </div>
+    <div id="skillsContainer" class="skills-container hidden"></div>
+  </main>
+
+  <!-- Detail Panel -->
+  <div id="detailOverlay" class="detail-overlay hidden" aria-modal="true" role="dialog" aria-labelledby="detailTitle"></div>
+  <aside id="detailPanel" class="detail-panel hidden">
+    <div class="detail-header">
+      <div class="detail-meta">
+        <h2 id="detailTitle" class="detail-title"></h2>
+        <p id="detailDescription" class="detail-description"></p>
+        <div id="detailBadges" class="detail-badges"></div>
+      </div>
+      <button class="detail-close" id="detailClose" aria-label="Close detail panel">×</button>
+    </div>
+    <div class="detail-body">
+      <div class="detail-section">
+        <h3 class="detail-section-title">Path</h3>
+        <p id="detailPath" class="detail-path mono"></p>
+      </div>
+      <div class="detail-section">
+        <h3 class="detail-section-title">Compatible Agents</h3>
+        <div id="detailAgents" class="detail-agents"></div>
+      </div>
+      <div class="detail-section">
+        <h3 class="detail-section-title">Install Date</h3>
+        <p id="detailInstallDate" class="detail-path mono"></p>
+      </div>
+      <div class="detail-section">
+        <h3 class="detail-section-title">Skill Overview</h3>
+        <div id="detailMd" class="detail-md"></div>
+      </div>
+    </div>
+    <div class="detail-actions">
+      <button class="btn btn-secondary" id="detailSkillsShBtn">View on skills.sh</button>
+      <button class="btn btn-outline" id="detailCopyBtn">Copy Install Command</button>
+    </div>
+  </aside>
+
+  <!-- Toast -->
+  <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+
+  <!-- Confirm Modal -->
+  <div id="confirmOverlay" class="confirm-overlay hidden"></div>
+  <div id="confirmModal" class="confirm-modal hidden" role="dialog" aria-modal="true">
+    <p class="confirm-title" id="confirmTitle"></p>
+    <p class="confirm-body" id="confirmBody"></p>
+    <div class="confirm-actions">
+      <button class="btn btn-outline" id="confirmCancel">Cancel</button>
+      <button class="btn btn-danger" id="confirmOk">Confirm</button>
+    </div>
+  </div>
+
+  <footer class="site-footer">
+    <span class="site-footer-version">Skill Dashboard v1.0</span>
+    <div class="site-footer-brand">
+      <svg class="site-footer-icon" viewBox="0 0 500 500" width="24" height="24" aria-label="J7Supreme icon" role="img">
+        <path d="M 140 72 L 270 72 L 400 242 L 100 242 L 100 157 L 205 157 Z" fill="currentColor" />
+        <path d="M 100 258 L 400 258 L 270 428 L 140 428 L 205 343 L 100 343 Z" fill="currentColor" />
+      </svg>
+      <span class="site-footer-text">Made by J7Supreme</span>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
