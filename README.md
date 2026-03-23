@@ -2,8 +2,6 @@
 
 A local web interface to manage, explore, and install your AI agent skills (`.agents/skills`, `.codex`, etc.).
 
-![Skill Dashboard Preview](https://raw.githubusercontent.com/J7Supreme/Skill-Dashboard/main/public/preview.png)
-
 ## Features
 - **Global & Project Scopes**: View skills installed globally vs. tied to the current project.
 - **Smart Functional Grouping**: Automatically clusters your skills into functional categories (Design & UI, Code & Dev, Workflow, etc.) based on their descriptions.
