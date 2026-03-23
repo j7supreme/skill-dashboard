@@ -30,5 +30,13 @@
     "j7supreme"
   ],
   "author": "J7Supreme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/J7Supreme/Skill-Dashboard.git"
+  },
+  "homepage": "https://github.com/J7Supreme/Skill-Dashboard#readme",
+  "bugs": {
+    "url": "https://github.com/J7Supreme/Skill-Dashboard/issues"
+  },
   "license": "MIT"
 }

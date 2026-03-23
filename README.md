@@ -2,7 +2,7 @@
 
 A local web interface to manage, explore, and install your AI agent skills (`.agents/skills`, `.codex`, etc.).
 
-![Dashboard Preview](https://via.placeholder.com/800x400?text=Skill+Dashboard+Preview)
+![Skill Dashboard Preview](./public/preview.png)
 
 ## Features
 - **Global & Project Scopes**: View skills installed globally vs. tied to the current project.
