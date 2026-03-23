@@ -1,4 +1,4 @@
-# J7Supreme Skill Dashboard
+# Agent Skill Dashboard
 
 A local web interface to manage, explore, and install your AI agent skills (`.agents/skills`, `.codex`, etc.).
 
