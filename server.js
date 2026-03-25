@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 'use strict';
 
-const crypto = require('crypto');
 const express = require('express');
 const { execFileSync, execFile } = require('child_process');
 const fs = require('fs');
@@ -9,47 +8,11 @@ const path = require('path');
 const os = require('os');
 const process = require('process');
 
-loadDotEnv(path.join(__dirname, '.env'));
-
 const PORT = 3847;
-const CACHE_DIR = path.join(__dirname, '.cache', 'translations');
-const TRANSLATION_TIMEOUT_MS = 4000;
-const TRANSLATION_PROVIDER = (process.env.SKILL_DASH_TRANSLATOR_PROVIDER || 'original').trim().toLowerCase();
-const ZHIPU_API_KEY = (process.env.ZHIPU_API_KEY || '').trim();
-const ZHIPU_BASE_URL = (process.env.ZHIPU_BASE_URL || 'https://open.bigmodel.cn/api/paas/v4/chat/completions').trim();
-const ZHIPU_MODEL = (process.env.ZHIPU_MODEL || 'glm-4-flash-250414').trim();
 const app = express();
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
-
-const translationMemo = new Map();
-const translationJobs = new Map();
-const prewarmInFlight = new Set();
-let prewarmQueue = [];
-let prewarmActive = 0;
-const PREWARM_CONCURRENCY = 2;
-
-function loadDotEnv(filePath) {
-  if (!fs.existsSync(filePath)) return;
-  const lines = fs.readFileSync(filePath, 'utf8').split(/\r?\n/);
-  for (const rawLine of lines) {
-    const line = rawLine.trim();
-    if (!line || line.startsWith('#')) continue;
-    const eq = line.indexOf('=');
-    if (eq < 0) continue;
-    const key = line.slice(0, eq).trim();
-    if (!key || process.env[key] !== undefined) continue;
-    let value = line.slice(eq + 1).trim();
-    if (
-      (value.startsWith('"') && value.endsWith('"')) ||
-      (value.startsWith("'") && value.endsWith("'"))
-    ) {
-      value = value.slice(1, -1);
-    }
-    process.env[key] = value;
-  }
-}
 
 function runCLI(cmd, cwd) {
   try {
@@ -90,6 +53,17 @@ function listSkills({ global = false, cwd } = {}) {
   if (global) args.push('-g');
   args.push('--json');
   return parseSkillsJson(runCLI(npxCommand(args), cwd));
+}
+
+function resolveProjectDir(value) {
+  const candidate = String(value || process.cwd()).trim();
+  const resolved = path.resolve(candidate);
+  if (!fs.existsSync(resolved) || !fs.statSync(resolved).isDirectory()) {
+    const error = new Error(`Project path not found: ${candidate}`);
+    error.statusCode = 400;
+    throw error;
+  }
+  return resolved;
 }
 
 function findSkillByName(name, projectDir) {
@@ -246,273 +220,7 @@ function inferFunctionGroup(description, body) {
   return 'Other Utilities';
 }
 
-function sha256(input) {
-  return crypto.createHash('sha256').update(input).digest('hex');
-}
-
-function ensureDir(dir) {
-  fs.mkdirSync(dir, { recursive: true });
-}
-
-function cacheFilePath(skillPath, locale, hash) {
-  const safeName = path.basename(skillPath).replace(/[^a-zA-Z0-9._-]/g, '_');
-  return path.join(CACHE_DIR, locale, `${safeName}.${hash.slice(0, 16)}.json`);
-}
-
-function readTranslationCache(skillPath, locale, hash) {
-  const filePath = cacheFilePath(skillPath, locale, hash);
-  if (!fs.existsSync(filePath)) return { data: {}, filePath };
-  try {
-    return { data: JSON.parse(fs.readFileSync(filePath, 'utf8')), filePath };
-  } catch {
-    return { data: {}, filePath };
-  }
-}
-
-function writeTranslationCache(filePath, data) {
-  ensureDir(path.dirname(filePath));
-  fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
-}
-
-async function translateChunk(text, targetLocale) {
-  if (!text || !/[A-Za-z]/.test(text) || targetLocale !== 'zh-CN') return text;
-  const key = `${targetLocale}:${text}`;
-  if (translationMemo.has(key)) return translationMemo.get(key);
-
-  if (TRANSLATION_PROVIDER === 'original') {
-    return text;
-  }
-
-  if (TRANSLATION_PROVIDER === 'zhipu') {
-    const translated = await translateChunkWithZhipu(text, targetLocale);
-    translationMemo.set(key, translated || text);
-    return translated || text;
-  }
-
-  if (TRANSLATION_PROVIDER !== 'google') {
-    throw new Error(`Unsupported translation provider: ${TRANSLATION_PROVIDER}`);
-  }
-
-  const url = new URL('https://translate.googleapis.com/translate_a/single');
-  url.searchParams.set('client', 'gtx');
-  url.searchParams.set('sl', 'auto');
-  url.searchParams.set('tl', targetLocale);
-  url.searchParams.set('dt', 't');
-  url.searchParams.set('q', text);
-
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), TRANSLATION_TIMEOUT_MS);
-
-  try {
-    const res = await fetch(url, {
-      headers: { 'user-agent': 'Mozilla/5.0 Skill Dashboard' },
-      signal: controller.signal,
-    });
-
-    if (!res.ok) {
-      throw new Error(`Translation request failed with ${res.status}`);
-    }
-
-    const data = await res.json();
-    const translated = Array.isArray(data?.[0])
-      ? data[0].map(part => Array.isArray(part) ? (part[0] || '') : '').join('')
-      : text;
-    translationMemo.set(key, translated || text);
-    return translated || text;
-  } finally {
-    clearTimeout(timeout);
-  }
-}
-
-async function translateChunkWithZhipu(text, targetLocale) {
-  if (!ZHIPU_API_KEY) {
-    throw new Error('ZHIPU_API_KEY is required when SKILL_DASH_TRANSLATOR_PROVIDER=zhipu');
-  }
-
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), TRANSLATION_TIMEOUT_MS);
-
-  try {
-    const res = await fetch(ZHIPU_BASE_URL, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${ZHIPU_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      signal: controller.signal,
-      body: JSON.stringify({
-        model: ZHIPU_MODEL,
-        do_sample: false,
-        temperature: 0.1,
-        messages: [
-          {
-            role: 'system',
-            content: [
-              `Translate the user content into ${targetLocale}.`,
-              'Preserve Markdown structure exactly.',
-              'Do not add explanations, notes, or code fences.',
-              'Keep URLs, inline code, and fenced code blocks unchanged when present.',
-            ].join(' '),
-          },
-          {
-            role: 'user',
-            content: text,
-          },
-        ],
-      }),
-    });
-
-    if (!res.ok) {
-      const errorText = await res.text();
-      throw new Error(`Zhipu translation request failed with ${res.status}: ${errorText.slice(0, 200)}`);
-    }
-
-    const data = await res.json();
-    const translated = data?.choices?.[0]?.message?.content;
-    return typeof translated === 'string' && translated.trim() ? translated : text;
-  } finally {
-    clearTimeout(timeout);
-  }
-}
-
-function splitLargeBlock(text, limit = 1600) {
-  if (text.length <= limit) return [text];
-  const pieces = [];
-  let buffer = '';
-  for (const part of text.split(/(\n)/)) {
-    if (buffer.length + part.length > limit && buffer) {
-      pieces.push(buffer);
-      buffer = '';
-    }
-    buffer += part;
-  }
-  if (buffer) pieces.push(buffer);
-  return pieces;
-}
-
-function protectMarkdown(text) {
-  const protectedValues = [];
-  const save = value => `ZXQTOKEN${protectedValues.push(value) - 1}END`;
-
-  let next = text.replace(/```[\s\S]*?```/g, match => save(match));
-  next = next.replace(/`[^`\n]+`/g, match => save(match));
-  next = next.replace(/\]\((https?:\/\/[^)\s]+)\)/g, (match, url) => `](${save(url)})`);
-  next = next.replace(/https?:\/\/[^\s)]+/g, match => save(match));
-
-  return {
-    text: next,
-    restore(value) {
-      return value.replace(/ZXQTOKEN(\d+)END/g, (_, index) => protectedValues[Number(index)] || '');
-    },
-  };
-}
-
-async function translateMarkdown(body, targetLocale) {
-  if (!body || targetLocale !== 'zh-CN') return body;
-  const { text, restore } = protectMarkdown(body);
-  const parts = text.split(/(\n\s*\n+)/);
-  const translated = [];
-
-  for (const part of parts) {
-    if (!part) continue;
-    if (/^\n\s*\n+$/.test(part)) {
-      translated.push(part);
-      continue;
-    }
-
-    const chunks = splitLargeBlock(part);
-    const chunkResults = [];
-    for (const chunk of chunks) {
-      chunkResults.push(await translateChunk(chunk, targetLocale));
-    }
-    translated.push(chunkResults.join(''));
-  }
-
-  return restore(translated.join(''));
-}
-
-async function getCachedTranslation(skillPath, locale, originalDescription, originalBody) {
-  const hash = sha256(`${originalDescription}\n---\n${originalBody}`);
-  const { data, filePath } = readTranslationCache(skillPath, locale, hash);
-  if (data.description && (!originalBody || data.body)) {
-    return {
-      hash,
-      description: data.description,
-      body: data.body || null,
-    };
-  }
-
-  const jobKey = `${locale}:${skillPath}:${hash}:${originalBody ? 'full' : 'summary'}`;
-  if (translationJobs.has(jobKey)) {
-    return translationJobs.get(jobKey);
-  }
-
-  const job = (async () => {
-    const next = {
-      hash,
-      description: data.description || null,
-      body: data.body || null,
-    };
-
-    if (!next.description && originalDescription) {
-      next.description = await translateChunk(originalDescription, locale);
-    }
-
-    if (!next.body && originalBody) {
-      next.body = await translateMarkdown(originalBody, locale);
-    }
-
-    writeTranslationCache(filePath, {
-      locale,
-      hash,
-      createdAt: new Date().toISOString(),
-      description: next.description,
-      body: next.body,
-    });
-
-    return next;
-  })();
-
-  translationJobs.set(jobKey, job);
-  try {
-    return await job;
-  } finally {
-    translationJobs.delete(jobKey);
-  }
-}
-
-function enqueuePrewarm(task) {
-  if (!task) return;
-  const key = `${task.locale}:${task.skill.path}`;
-  if (prewarmInFlight.has(key)) return;
-  prewarmInFlight.add(key);
-  prewarmQueue.push({ ...task, key });
-  drainPrewarmQueue();
-}
-
-function drainPrewarmQueue() {
-  while (prewarmActive < PREWARM_CONCURRENCY && prewarmQueue.length > 0) {
-    const task = prewarmQueue.shift();
-    prewarmActive += 1;
-    Promise.resolve()
-      .then(() => resolveLocalizedSkill(task.skill, task.locale, { includeBody: true }))
-      .catch(() => {})
-      .finally(() => {
-        prewarmActive -= 1;
-        prewarmInFlight.delete(task.key);
-        drainPrewarmQueue();
-      });
-  }
-}
-
-function scheduleBodyPrewarm(skills, locale) {
-  if (locale !== 'zh-CN') return;
-  for (const skill of skills) {
-    enqueuePrewarm({ skill, locale });
-  }
-}
-
-async function resolveLocalizedSkill(skill, locale, { includeBody = false } = {}) {
+function resolveLocalizedSkill(skill, locale, { includeBody = false } = {}) {
   const originalMd = readSkillMd(skill.path, 'en');
   const originalFrontmatter = parseFrontmatter(originalMd);
   const originalBody = stripFrontmatter(originalMd);
@@ -544,41 +252,19 @@ async function resolveLocalizedSkill(skill, locale, { includeBody = false } = {}
     };
   }
 
-  if (TRANSLATION_PROVIDER === 'original') {
-    return {
-      ...base,
-      body: includeBody ? originalBody : '',
-      hasFallback: true,
-      translationSource: 'fallback',
-    };
-  }
-
-  try {
-    const translated = await getCachedTranslation(skill.path, 'zh-CN', originalDescription, includeBody ? originalBody : '');
-    return {
-      originalDescription,
-      originalBody,
-      resolvedLocale: translated.description || translated.body ? 'zh-CN' : 'en',
-      translationSource: 'machine',
-      hasFallback: false,
-      description: translated.description || originalDescription,
-      body: includeBody ? (translated.body || originalBody) : '',
-    };
-  } catch {
-    return {
-      ...base,
-      body: includeBody ? originalBody : '',
-      hasFallback: true,
-      translationSource: 'fallback',
-    };
-  }
+  return {
+    ...base,
+    body: includeBody ? originalBody : '',
+    hasFallback: true,
+    translationSource: 'fallback',
+  };
 }
 
-async function enrichSkill(skill, locale) {
+function enrichSkill(skill, locale) {
   const originalMd = readSkillMd(skill.path, 'en');
   const fm = parseFrontmatter(originalMd);
   const body = stripFrontmatter(originalMd);
-  const localized = await resolveLocalizedSkill(skill, locale, { includeBody: false });
+  const localized = resolveLocalizedSkill(skill, locale, { includeBody: false });
   const installDate = getInstallDate(skill.path);
   const group = inferGroup(skill.path);
   const source = inferInstallSource(skill);
@@ -605,10 +291,11 @@ async function enrichSkill(skill, locale) {
 }
 
 app.get('/api/skills', async (req, res) => {
-  const projectDir = req.query.projectDir || process.cwd();
+  let projectDir;
   const locale = req.query.locale === 'zh-CN' ? 'zh-CN' : 'en';
 
   try {
+    projectDir = resolveProjectDir(req.query.projectDir);
     const globalSkills = listSkills({ global: true }).map(skill => ({ ...skill, scope: 'global' }));
     const projectSkills = projectDir
       ? listSkills({ cwd: projectDir }).map(skill => ({ ...skill, scope: 'project' }))
@@ -617,27 +304,26 @@ app.get('/api/skills', async (req, res) => {
     const globalNames = new Set(globalSkills.map(skill => skill.name));
     const onlyProject = projectSkills.filter(skill => !globalNames.has(skill.name));
     const allSkills = [...globalSkills, ...onlyProject];
-    const enriched = await Promise.all(allSkills.map(skill => enrichSkill(skill, locale)));
-    scheduleBodyPrewarm(allSkills, locale);
+    const enriched = allSkills.map(skill => enrichSkill(skill, locale));
 
-    res.json({ skills: enriched });
+    res.json({ skills: enriched, projectDir });
   } catch (error) {
-    res.status(500).json({ error: error.message || 'Failed to load skills' });
+    res.status(error.statusCode || 500).json({ error: error.message || 'Failed to load skills' });
   }
 });
 
 app.get('/api/skills/:name/detail', async (req, res) => {
   const name = req.params.name;
-  const projectDir = req.query.projectDir || process.cwd();
+  let projectDir;
   const locale = req.query.locale === 'zh-CN' ? 'zh-CN' : 'en';
-  const found = findSkillByName(name, projectDir);
-
-  if (!found) {
-    return res.status(404).json({ error: 'Skill not found' });
-  }
 
   try {
-    const localized = await resolveLocalizedSkill(found, locale, { includeBody: true });
+    projectDir = resolveProjectDir(req.query.projectDir);
+    const found = findSkillByName(name, projectDir);
+    if (!found) {
+      return res.status(404).json({ error: 'Skill not found' });
+    }
+    const localized = resolveLocalizedSkill(found, locale, { includeBody: true });
     const sourceLink = resolveSourceLink(found, readSkillMd(found.path, 'en'));
     res.json({
       name,
@@ -652,7 +338,7 @@ app.get('/api/skills/:name/detail', async (req, res) => {
       sourceLink,
     });
   } catch (error) {
-    res.status(500).json({ error: error.message || 'Failed to load details' });
+    res.status(error.statusCode || 500).json({ error: error.message || 'Failed to load details' });
   }
 });
 
@@ -660,9 +346,15 @@ app.post('/api/skills/:name/uninstall', (req, res) => {
   const { name } = req.params;
   const { isGlobal } = req.body;
   const args = ['skills', 'remove', name];
+  let cwd;
   if (isGlobal) args.push('-g');
   args.push('-y');
-  execCLI(npxCommand(args), process.cwd(), 30000, (err, stdout, stderr) => {
+  try {
+    cwd = resolveProjectDir(req.body.projectDir);
+  } catch (error) {
+    return res.status(error.statusCode || 500).json({ error: error.message });
+  }
+  execCLI(npxCommand(args), cwd, 30000, (err, stdout, stderr) => {
     if (err) return res.status(500).json({ error: stderr || err.message });
     return res.json({ success: true, output: stdout });
   });
@@ -670,7 +362,16 @@ app.post('/api/skills/:name/uninstall', (req, res) => {
 
 app.post('/api/skills/:name/update', (req, res) => {
   const { name } = req.params;
-  execCLI(npxCommand(['skills', 'update', name]), process.cwd(), 30000, (err, stdout, stderr) => {
+  const { isGlobal } = req.body;
+  const args = ['skills', 'update', name];
+  let cwd;
+  if (isGlobal) args.push('-g');
+  try {
+    cwd = resolveProjectDir(req.body.projectDir);
+  } catch (error) {
+    return res.status(error.statusCode || 500).json({ error: error.message });
+  }
+  execCLI(npxCommand(args), cwd, 30000, (err, stdout, stderr) => {
     if (err) return res.status(500).json({ error: stderr || err.message });
     return res.json({ success: true, output: stdout });
   });
@@ -681,6 +382,7 @@ app.post('/api/skills/:name/reinstall', (req, res) => {
   const addSource = source || name;
   const removeArgs = ['skills', 'remove', name];
   const addArgs = ['skills', 'add', addSource];
+  let cwd;
   if (isGlobal) {
     removeArgs.push('-g');
     addArgs.push('-g');
@@ -688,9 +390,15 @@ app.post('/api/skills/:name/reinstall', (req, res) => {
   removeArgs.push('-y');
   addArgs.push('-y');
 
-  execCLI(npxCommand(removeArgs), process.cwd(), 30000, (removeErr, removeStdout, removeStderr) => {
+  try {
+    cwd = resolveProjectDir(req.body.projectDir);
+  } catch (error) {
+    return res.status(error.statusCode || 500).json({ error: error.message });
+  }
+
+  execCLI(npxCommand(removeArgs), cwd, 30000, (removeErr, removeStdout, removeStderr) => {
     if (removeErr) return res.status(500).json({ error: removeStderr || removeErr.message });
-    return execCLI(npxCommand(addArgs), process.cwd(), 30000, (addErr, addStdout, addStderr) => {
+    return execCLI(npxCommand(addArgs), cwd, 30000, (addErr, addStdout, addStderr) => {
       if (addErr) return res.status(500).json({ error: addStderr || addErr.message });
       return res.json({ success: true, output: `${removeStdout}${addStdout}` });
     });

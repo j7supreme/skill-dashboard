@@ -70,6 +70,28 @@
 
   <!-- Main -->
   <main class="main">
+    <section id="projectContextBar" class="project-context hidden" aria-live="polite">
+      <button id="projectContextTrigger" class="project-context-trigger" type="button" aria-expanded="false" aria-controls="projectContextPanel">
+        <span id="projectContextLabel">Showing Skills in project</span>
+        <span class="project-context-trigger-meta">
+          <span id="projectContextActionLabel" class="project-context-action-label">change project</span>
+          <span class="project-context-arrow" aria-hidden="true">→</span>
+        </span>
+      </button>
+      <div id="projectContextPanel" class="project-context-panel hidden">
+        <label class="project-context-field">
+          <span id="projectPathLabel" class="project-context-field-label">Project Path</span>
+          <input id="projectPathInput" class="project-context-input" type="text" placeholder="/path/to/project" spellcheck="false" autocomplete="off" />
+        </label>
+        <div class="project-context-actions">
+          <button id="projectPathApply" class="btn btn-primary" type="button">Apply Path</button>
+        </div>
+        <div id="projectRecentWrap" class="project-recent-wrap hidden">
+          <p id="projectRecentLabel" class="project-context-field-label">Recent Projects</p>
+          <div id="projectRecentList" class="project-recent-list"></div>
+        </div>
+      </div>
+    </section>
     <div id="loadingState" class="loading-state">
       <div class="spinner"></div>
       <p id="loadingText">Loading skills…</p>

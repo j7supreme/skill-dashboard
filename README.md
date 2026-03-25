@@ -37,34 +37,14 @@ Navigate to any directory and run `skill-dashboard`.
 
 It starts a local server on port `3847`, opens your default browser, and reads your installed skills through the standard `npx skills ls` command family.
 
-## Translation Setup
+## Chinese Content
 
-By default, skill details stay in the original language. To enable Simplified Chinese translation with Zhipu GLM-4-Flash, either export environment variables or create a local `.env` file:
+The dashboard now keeps English as the default source content. When you switch the UI language to Simplified Chinese, the app shows a prompt that copies an agent instruction for generating localized `SKILL.zh-CN.md` files beside each original `SKILL.md`.
 
-```bash
-export SKILL_DASH_TRANSLATOR_PROVIDER=zhipu
-export ZHIPU_API_KEY=your_zhipu_api_key
-export ZHIPU_MODEL=glm-4-flash-250414
-```
-
-Optional settings:
-
-```bash
-export ZHIPU_BASE_URL=https://open.bigmodel.cn/api/paas/v4/chat/completions
-```
-
-`.env` example:
-
-```env
-SKILL_DASH_TRANSLATOR_PROVIDER=zhipu
-ZHIPU_API_KEY=your_zhipu_api_key
-ZHIPU_MODEL=glm-4-flash-250414
-```
-
-Notes:
-- If `SKILL_DASH_TRANSLATOR_PROVIDER` is unset, the dashboard falls back to the original English content.
-- If Zhipu translation fails or times out, the dashboard also falls back to the original content.
-- `SKILL_DASH_TRANSLATOR_PROVIDER=google` is still supported, but it is no longer the default.
+Behavior:
+- If a skill already contains `SKILL.zh-CN.md`, the dashboard renders that Chinese version.
+- If no Chinese file exists yet, the dashboard keeps showing the original English content.
+- No cloud translation API or API key is required.
 
 ## Tech Stack
 - Frontend: Vanilla JS, Vanilla CSS, HTML5

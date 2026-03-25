@@ -28,7 +28,15 @@ const UI_STRINGS = {
     loadingSkills: 'Loading skills…',
     loadingSkillDetails: 'Loading skill details…',
     noSkillsFound: 'No skills found',
-    tryDifferentSearch: 'Try a different search or install a skill with',
+    noProjectSkillsFound: 'No skills found in this project',
+    showingSkillsIn: 'Showing Skills in {name}',
+    currentProject: 'current project',
+    changeProject: 'change project',
+    projectPathLabel: 'Project Path',
+    projectPathPlaceholder: '/path/to/project',
+    applyProjectPath: 'Apply Path',
+    recentProjects: 'Recent Projects',
+    tryDifferentSearch: 'Switch to another project folder, or install a skill with',
     path: 'Path',
     compatibleAgents: 'Compatible Agents',
     installDate: 'Install Date',
@@ -63,14 +71,18 @@ const UI_STRINGS = {
     noDescription: 'No description available',
     noSkillDoc: 'No SKILL.md found.',
     docTranslated: 'Displaying Simplified Chinese translation',
-    docAutoTranslated: 'Displaying auto-translated Simplified Chinese content',
-    docFallback: 'Chinese translation unavailable, displaying original English',
+    docFallback: 'Chinese translation not generated yet. Showing original English.',
     scopeGlobal: 'global',
     scopeProject: 'project',
     userInvokable: 'user-invokable',
     languageLabel: 'Language',
     languageEnglish: 'English',
     languageChinese: '简体中文',
+    zhPromptTitle: 'Chinese content requires a local agent',
+    zhPromptBody: 'The dashboard now keeps English as the default source. To view Chinese skill docs, run your local agent to generate SKILL.zh-CN.md files, then refresh.',
+    zhPromptAction: 'Copy agent prompt',
+    zhPromptDismiss: 'Continue with English',
+    zhPromptCopied: 'Agent prompt copied.',
     footerMadeBy: 'Made by J7Supreme',
     functionAnalysis: 'Analysis & Review',
     functionCode: 'Code & Development',
@@ -80,6 +92,7 @@ const UI_STRINGS = {
     functionOther: 'Other Utilities',
     errorLoadingSkills: 'Error loading skills: {message}',
     errorLoadingDetails: 'Error loading details: {message}',
+    errorInvalidProjectDir: 'Project path not found: {path}',
   },
   'zh-CN': {
     appTitle: '技能面板',
@@ -105,7 +118,15 @@ const UI_STRINGS = {
     loadingSkills: '正在加载 skills…',
     loadingSkillDetails: '正在加载技能详情…',
     noSkillsFound: '未找到 skills',
-    tryDifferentSearch: '试试其他搜索条件，或使用以下命令安装 skill：',
+    noProjectSkillsFound: '未找到安装在项目的skills',
+    showingSkillsIn: 'Showing Skills in {name}',
+    currentProject: '当前项目',
+    changeProject: 'change project',
+    projectPathLabel: '项目路径',
+    projectPathPlaceholder: '/path/to/project',
+    applyProjectPath: '应用路径',
+    recentProjects: '最近项目',
+    tryDifferentSearch: '切换到其他项目文件夹，或使用以下命令安装 skill：',
     path: '路径',
     compatibleAgents: '兼容 Agents',
     installDate: '安装时间',
@@ -140,14 +161,18 @@ const UI_STRINGS = {
     noDescription: '暂无描述',
     noSkillDoc: '未找到 SKILL.md。',
     docTranslated: '当前显示简体中文译文',
-    docAutoTranslated: '当前显示自动翻译的简体中文内容',
-    docFallback: '暂无简体中文译文，当前显示英文原文',
+    docFallback: '尚未生成简体中文文档，当前显示英文原文',
     scopeGlobal: '全局',
     scopeProject: '项目',
     userInvokable: '可由用户触发',
     languageLabel: '语言',
     languageEnglish: 'English',
     languageChinese: '简体中文',
+    zhPromptTitle: '中文内容需要本地 Agent',
+    zhPromptBody: '面板默认保留英文原文。若要查看中文 skill 文档，请使用你自己的本地 agent 生成 SKILL.zh-CN.md 文件，然后刷新页面。',
+    zhPromptAction: '复制 Agent 指令',
+    zhPromptDismiss: '继续看英文',
+    zhPromptCopied: '已复制 Agent 指令',
     footerMadeBy: 'J7Supreme 制作',
     functionAnalysis: '分析与评审',
     functionCode: '代码与开发',
@@ -157,6 +182,7 @@ const UI_STRINGS = {
     functionOther: '其他工具',
     errorLoadingSkills: '加载 skills 失败：{message}',
     errorLoadingDetails: '加载详情失败：{message}',
+    errorInvalidProjectDir: '项目路径不存在：{path}',
   },
 };
 
@@ -178,10 +204,13 @@ const state = {
   agent: 'all',
   fn: 'all',
   search: '',
+  projectDir: '',
   loading: false,
   openDropdown: null,
+  projectPanelOpen: false,
   detailSkill: null,
   locale: detectInitialLocale(),
+  zhPromptDismissed: false,
 };
 
 const $ = id => document.getElementById(id);
@@ -199,6 +228,17 @@ const els = {
   tabs: document.querySelectorAll('.tab'),
   countGlobal: $('countGlobal'),
   countProject: $('countProject'),
+  projectContextBar: $('projectContextBar'),
+  projectContextTrigger: $('projectContextTrigger'),
+  projectContextLabel: $('projectContextLabel'),
+  projectContextPanel: $('projectContextPanel'),
+  projectContextActionLabel: $('projectContextActionLabel'),
+  projectPathLabel: $('projectPathLabel'),
+  projectPathInput: $('projectPathInput'),
+  projectPathApply: $('projectPathApply'),
+  projectRecentWrap: $('projectRecentWrap'),
+  projectRecentLabel: $('projectRecentLabel'),
+  projectRecentList: $('projectRecentList'),
   loadingState: $('loadingState'),
   emptyState: $('emptyState'),
   emptySubPrefix: $('emptySubPrefix'),
@@ -236,11 +276,13 @@ const els = {
 };
 
 let currentSourceUrl = null;
+let confirmCallback = null;
+let confirmOptions = null;
 
 function detectInitialLocale() {
   const stored = localStorage.getItem('skill-dash-locale');
   if (stored && UI_STRINGS[stored]) return stored;
-  return navigator.language && navigator.language.toLowerCase().startsWith('zh') ? 'zh-CN' : 'en';
+  return 'en';
 }
 
 function t(key, params = {}) {
@@ -253,17 +295,31 @@ function localizedFunctionGroup(label) {
   return t(FUNCTION_GROUP_LABELS[label] || 'functionOther');
 }
 
+function buildApiUrl(path, { includeLocale = true, includeProjectDir = false } = {}) {
+  const url = new URL(path, window.location.origin);
+  if (includeLocale) {
+    url.searchParams.set('locale', state.locale);
+  }
+  if (includeProjectDir && state.projectDir) {
+    url.searchParams.set('projectDir', state.projectDir);
+  }
+  return `${url.pathname}${url.search}`;
+}
+
 async function fetchSkills() {
-  const res = await fetch(`/api/skills?locale=${encodeURIComponent(state.locale)}`);
+  const res = await fetch(buildApiUrl('/api/skills', { includeProjectDir: true }));
   if (!res.ok) throw new Error('Failed to load skills');
   return res.json();
 }
 
 async function apiAction(path, body) {
-  const res = await fetch(path, {
+  const res = await fetch(buildApiUrl(path, { includeLocale: false, includeProjectDir: true }), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
+    body: JSON.stringify({
+      ...body,
+      projectDir: state.projectDir,
+    }),
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || 'Action failed');
@@ -271,24 +327,135 @@ async function apiAction(path, body) {
 }
 
 async function fetchDetail(name) {
-  const res = await fetch(`/api/skills/${encodeURIComponent(name)}/detail?locale=${encodeURIComponent(state.locale)}`);
+  const res = await fetch(buildApiUrl(`/api/skills/${encodeURIComponent(name)}/detail`, { includeProjectDir: true }));
   if (!res.ok) throw new Error('Failed to load details');
   return res.json();
 }
 
-async function loadSkills() {
+function buildAgentTranslationPrompt() {
+  return [
+    'Translate installed skill docs into Simplified Chinese.',
+    'For each target skill, read SKILL.md and create SKILL.zh-CN.md next to it.',
+    'Preserve frontmatter keys, markdown structure, code fences, inline code, and links.',
+    'Keep command names and file paths unchanged.',
+    'Only add SKILL.zh-CN.md files; do not modify SKILL.md.',
+  ].join('\n');
+}
+
+function normalizeProjectDir(value) {
+  return (value || '').trim();
+}
+
+function getProjectName(projectDir) {
+  const normalized = normalizeProjectDir(projectDir);
+  if (!normalized) return t('currentProject');
+  const parts = normalized.replace(/[\\/]+$/, '').split(/[\\/]/).filter(Boolean);
+  return parts[parts.length - 1] || normalized;
+}
+
+function getRecentProjects() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem('skill-dash-recent-projects') || '[]');
+    return Array.isArray(parsed) ? parsed.filter(item => typeof item === 'string' && item.trim()) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveRecentProject(projectDir) {
+  const normalized = normalizeProjectDir(projectDir);
+  if (!normalized) return;
+  const next = [normalized, ...getRecentProjects().filter(item => item !== normalized)].slice(0, 6);
+  localStorage.setItem('skill-dash-recent-projects', JSON.stringify(next));
+}
+
+function renderProjectContext() {
+  const isProjectScope = state.scope === 'project';
+  els.projectContextBar.classList.toggle('hidden', !isProjectScope);
+  if (!isProjectScope) {
+    closeProjectContextPanel();
+    return;
+  }
+
+  const projectName = getProjectName(state.projectDir);
+  const marker = '__PROJECT_NAME__';
+  const [prefix, suffix] = t('showingSkillsIn', { name: marker }).split(marker);
+  const projectPath = state.projectDir || t('currentProject');
+  els.projectContextLabel.innerHTML = `
+    <span class="project-context-label">
+      <span class="project-context-heading">
+        <span class="project-context-title">${escapeHtml(prefix || '')}</span>
+        <span class="project-context-name">${escapeHtml(projectName)}</span>
+        <span class="project-context-title">${escapeHtml(suffix || '')}</span>
+      </span>
+      <span class="project-context-path">${escapeHtml(projectPath)}</span>
+    </span>`;
+  els.projectPathInput.value = state.projectDir || '';
+  els.projectPathInput.placeholder = t('projectPathPlaceholder');
+
+  const recentProjects = getRecentProjects().filter(project => project !== state.projectDir);
+  els.projectRecentWrap.classList.toggle('hidden', recentProjects.length === 0);
+  els.projectRecentList.innerHTML = '';
+  recentProjects.forEach(project => {
+    const button = document.createElement('button');
+    button.className = 'project-recent-btn';
+    button.type = 'button';
+    button.dataset.projectDir = project;
+    button.title = project;
+    button.textContent = getProjectName(project);
+    els.projectRecentList.appendChild(button);
+  });
+}
+
+async function applyProjectDir(nextProjectDir) {
+  const normalized = normalizeProjectDir(nextProjectDir);
+  if (!normalized) {
+    showToast(t('errorInvalidProjectDir', { path: t('unknown') }), 'error');
+    return;
+  }
+
+  const previous = state.projectDir;
+  state.projectDir = normalized;
+  closeProjectContextPanel();
+  await loadSkills({ preserveProjectDirOnError: previous || '' });
+}
+
+function openProjectContextPanel() {
+  if (state.scope !== 'project') return;
+  state.projectPanelOpen = true;
+  els.projectContextPanel.classList.remove('hidden');
+  els.projectContextTrigger.classList.add('open');
+  els.projectContextTrigger.setAttribute('aria-expanded', 'true');
+  renderProjectContext();
+  requestAnimationFrame(() => els.projectPathInput.focus());
+}
+
+function closeProjectContextPanel() {
+  state.projectPanelOpen = false;
+  els.projectContextPanel.classList.add('hidden');
+  els.projectContextTrigger.classList.remove('open');
+  els.projectContextTrigger.setAttribute('aria-expanded', 'false');
+}
+
+async function loadSkills(options = {}) {
+  const { preserveProjectDirOnError = state.projectDir } = options;
   state.loading = true;
   els.loadingState.classList.remove('hidden');
   els.emptyState.classList.add('hidden');
   els.container.classList.add('hidden');
+  renderProjectContext();
 
   try {
-    const { skills } = await fetchSkills();
+    const { skills, projectDir } = await fetchSkills();
     state.skills = skills;
+    state.projectDir = normalizeProjectDir(projectDir || state.projectDir);
+    saveRecentProject(state.projectDir);
     populateDropdowns();
     applyTranslations();
     applyFilters();
   } catch (error) {
+    state.projectDir = preserveProjectDirOnError;
+    renderProjectContext();
     showToast(t('errorLoadingSkills', { message: error.message }), 'error');
     els.loadingState.classList.add('hidden');
     els.emptyState.classList.remove('hidden');
@@ -364,6 +531,9 @@ function groupSkills(skills) {
 
 function render() {
   els.loadingState.classList.add('hidden');
+  renderProjectContext();
+  els.emptyText.textContent =
+    state.scope === 'project' ? t('noProjectSkillsFound') : t('noSkillsFound');
 
   if (state.filtered.length === 0) {
     els.emptyState.classList.remove('hidden');
@@ -552,7 +722,9 @@ async function handleAction(action, skill) {
       async () => {
         try {
           showToast(t('updating'));
-          await apiAction(`/api/skills/${encodeURIComponent(skill.name)}/update`, {});
+          await apiAction(`/api/skills/${encodeURIComponent(skill.name)}/update`, {
+            isGlobal: skill.scope === 'global',
+          });
           showToast(t('updated', { name: skill.name }), 'success');
           await loadSkills();
         } catch (error) {
@@ -617,7 +789,6 @@ async function openDetail(skill) {
 function detailNotice(detail) {
   if (state.locale !== 'zh-CN') return '';
   if (detail.hasFallback) return t('docFallback');
-  if (detail.translationSource === 'machine') return t('docAutoTranslated');
   if (detail.resolvedLocale === 'zh-CN') return t('docTranslated');
   return '';
 }
@@ -654,10 +825,12 @@ function formatInstallDate(value) {
 }
 
 function escapeHtml(value) {
-  return value
+  return String(value)
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 function renderMarkdown(markdown) {
@@ -700,12 +873,14 @@ function renderInline(text) {
     .replace(/`([^`]+)`/g, '<code>$1</code>');
 }
 
-let confirmCallback = null;
-
-function confirmAction(title, body, callback) {
+function confirmAction(title, body, callback, options = {}) {
   els.confirmTitle.textContent = title;
   els.confirmBody.textContent = body;
   confirmCallback = callback;
+  confirmOptions = options;
+  els.confirmCancel.textContent = options.cancelLabel || t('cancel');
+  els.confirmOk.textContent = options.confirmLabel || t('confirm');
+  els.confirmOk.className = options.confirmClass || 'btn btn-danger';
   els.confirmOverlay.classList.remove('hidden');
   els.confirmModal.classList.remove('hidden');
 }
@@ -714,6 +889,10 @@ function closeConfirm() {
   els.confirmOverlay.classList.add('hidden');
   els.confirmModal.classList.add('hidden');
   confirmCallback = null;
+  confirmOptions = null;
+  els.confirmOk.className = 'btn btn-danger';
+  els.confirmCancel.textContent = t('cancel');
+  els.confirmOk.textContent = t('confirm');
 }
 
 let toastTimer = null;
@@ -724,6 +903,23 @@ function showToast(message, type = '') {
   els.toast.className = `toast${type ? ` ${type}` : ''}`;
   els.toast.classList.remove('hidden');
   toastTimer = setTimeout(() => els.toast.classList.add('hidden'), 3000);
+}
+
+function showChineseAgentPrompt() {
+  confirmAction(
+    t('zhPromptTitle'),
+    t('zhPromptBody'),
+    async () => {
+      await navigator.clipboard.writeText(buildAgentTranslationPrompt());
+      state.zhPromptDismissed = true;
+      showToast(t('zhPromptCopied'), 'success');
+    },
+    {
+      cancelLabel: t('zhPromptDismiss'),
+      confirmLabel: t('zhPromptAction'),
+      confirmClass: 'btn btn-primary',
+    }
+  );
 }
 
 function applyTranslations() {
@@ -746,9 +942,15 @@ function applyTranslations() {
 
   els.tabGlobal.childNodes[0].textContent = `${t('globalSkills')} `;
   els.tabProject.childNodes[0].textContent = `${t('projectSkills')} `;
+  renderProjectContext();
   els.loadingText.textContent = t('loadingSkills');
-  els.emptyText.textContent = t('noSkillsFound');
+  els.emptyText.textContent =
+    state.scope === 'project' ? t('noProjectSkillsFound') : t('noSkillsFound');
   els.emptySubPrefix.textContent = `${t('tryDifferentSearch')} `;
+  els.projectPathLabel.textContent = t('projectPathLabel');
+  els.projectContextActionLabel.textContent = t('changeProject');
+  els.projectPathApply.textContent = t('applyProjectPath');
+  els.projectRecentLabel.textContent = t('recentProjects');
 
   els.detailPathTitle.textContent = t('path');
   els.detailAgentsTitle.textContent = t('compatibleAgents');
@@ -757,8 +959,10 @@ function applyTranslations() {
   els.detailClose.setAttribute('aria-label', t('closeDetail'));
   els.detailSkillsShBtn.textContent = t('viewSource');
   els.detailCopyBtn.textContent = t('copyInstallCommand');
-  els.confirmCancel.textContent = t('cancel');
-  els.confirmOk.textContent = t('confirm');
+  if (!confirmOptions) {
+    els.confirmCancel.textContent = t('cancel');
+    els.confirmOk.textContent = t('confirm');
+  }
   els.languageSelect.setAttribute('aria-label', t('languageLabel'));
   els.languageSelect.innerHTML = `
     <option value="en">${t('languageEnglish')}</option>
@@ -774,11 +978,16 @@ function applyTranslations() {
 }
 
 function setLocale(locale) {
+  const nextLocale = UI_STRINGS[locale] ? locale : 'en';
+  const shouldPrompt = nextLocale === 'zh-CN' && state.locale !== 'zh-CN';
   state.locale = UI_STRINGS[locale] ? locale : 'en';
   localStorage.setItem('skill-dash-locale', state.locale);
   applyTranslations();
   loadSkills();
   if (state.detailSkill) openDetail(state.detailSkill);
+  if (shouldPrompt && !state.zhPromptDismissed) {
+    showChineseAgentPrompt();
+  }
 }
 
 els.search.addEventListener('input', () => {
@@ -849,8 +1058,28 @@ els.tabs.forEach(tab => {
     tab.classList.add('active');
     tab.setAttribute('aria-selected', 'true');
     state.scope = tab.dataset.scope;
+    if (state.scope !== 'project') closeProjectContextPanel();
     applyFilters();
   });
+});
+
+els.projectContextTrigger.addEventListener('click', () => {
+  if (state.projectPanelOpen) {
+    closeProjectContextPanel();
+    return;
+  }
+  openProjectContextPanel();
+});
+
+els.projectPathApply.addEventListener('click', async () => {
+  await applyProjectDir(els.projectPathInput.value);
+});
+
+els.projectPathInput.addEventListener('keydown', async event => {
+  if (event.key === 'Enter') {
+    event.preventDefault();
+    await applyProjectDir(els.projectPathInput.value);
+  }
 });
 
 els.detailClose.addEventListener('click', closeDetail);
@@ -876,11 +1105,23 @@ document.addEventListener('click', event => {
   if (state.openDropdown && !event.target.closest('.dropdown') && !event.target.closest('.more-btn')) {
     closeDropdown();
   }
+  if (
+    state.projectPanelOpen &&
+    !event.target.closest('#projectContextPanel') &&
+    !event.target.closest('#projectContextTrigger')
+  ) {
+    closeProjectContextPanel();
+  }
+  const recentProjectButton = event.target.closest('.project-recent-btn');
+  if (recentProjectButton) {
+    applyProjectDir(recentProjectButton.dataset.projectDir);
+  }
 });
 
 document.addEventListener('keydown', event => {
   if (event.key !== 'Escape') return;
   closeDropdown();
+  closeProjectContextPanel();
   closeDetail();
   closeConfirm();
 });
