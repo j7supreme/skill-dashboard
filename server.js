@@ -9,8 +9,15 @@ const path = require('path');
 const os = require('os');
 const process = require('process');
 
+loadDotEnv(path.join(__dirname, '.env'));
+
 const PORT = 3847;
 const CACHE_DIR = path.join(__dirname, '.cache', 'translations');
+const TRANSLATION_TIMEOUT_MS = 4000;
+const TRANSLATION_PROVIDER = (process.env.SKILL_DASH_TRANSLATOR_PROVIDER || 'original').trim().toLowerCase();
+const ZHIPU_API_KEY = (process.env.ZHIPU_API_KEY || '').trim();
+const ZHIPU_BASE_URL = (process.env.ZHIPU_BASE_URL || 'https://open.bigmodel.cn/api/paas/v4/chat/completions').trim();
+const ZHIPU_MODEL = (process.env.ZHIPU_MODEL || 'glm-4-flash-250414').trim();
 const app = express();
 
 app.use(express.json());
@@ -22,6 +29,27 @@ const prewarmInFlight = new Set();
 let prewarmQueue = [];
 let prewarmActive = 0;
 const PREWARM_CONCURRENCY = 2;
+
+function loadDotEnv(filePath) {
+  if (!fs.existsSync(filePath)) return;
+  const lines = fs.readFileSync(filePath, 'utf8').split(/\r?\n/);
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith('#')) continue;
+    const eq = line.indexOf('=');
+    if (eq < 0) continue;
+    const key = line.slice(0, eq).trim();
+    if (!key || process.env[key] !== undefined) continue;
+    let value = line.slice(eq + 1).trim();
+    if (
+      (value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith("'") && value.endsWith("'"))
+    ) {
+      value = value.slice(1, -1);
+    }
+    process.env[key] = value;
+  }
+}
 
 function runCLI(cmd, cwd) {
   try {
@@ -251,6 +279,20 @@ async function translateChunk(text, targetLocale) {
   const key = `${targetLocale}:${text}`;
   if (translationMemo.has(key)) return translationMemo.get(key);
 
+  if (TRANSLATION_PROVIDER === 'original') {
+    return text;
+  }
+
+  if (TRANSLATION_PROVIDER === 'zhipu') {
+    const translated = await translateChunkWithZhipu(text, targetLocale);
+    translationMemo.set(key, translated || text);
+    return translated || text;
+  }
+
+  if (TRANSLATION_PROVIDER !== 'google') {
+    throw new Error(`Unsupported translation provider: ${TRANSLATION_PROVIDER}`);
+  }
+
   const url = new URL('https://translate.googleapis.com/translate_a/single');
   url.searchParams.set('client', 'gtx');
   url.searchParams.set('sl', 'auto');
@@ -258,20 +300,79 @@ async function translateChunk(text, targetLocale) {
   url.searchParams.set('dt', 't');
   url.searchParams.set('q', text);
 
-  const res = await fetch(url, {
-    headers: { 'user-agent': 'Mozilla/5.0 Skill Dashboard' },
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), TRANSLATION_TIMEOUT_MS);
 
-  if (!res.ok) {
-    throw new Error(`Translation request failed with ${res.status}`);
+  try {
+    const res = await fetch(url, {
+      headers: { 'user-agent': 'Mozilla/5.0 Skill Dashboard' },
+      signal: controller.signal,
+    });
+
+    if (!res.ok) {
+      throw new Error(`Translation request failed with ${res.status}`);
+    }
+
+    const data = await res.json();
+    const translated = Array.isArray(data?.[0])
+      ? data[0].map(part => Array.isArray(part) ? (part[0] || '') : '').join('')
+      : text;
+    translationMemo.set(key, translated || text);
+    return translated || text;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function translateChunkWithZhipu(text, targetLocale) {
+  if (!ZHIPU_API_KEY) {
+    throw new Error('ZHIPU_API_KEY is required when SKILL_DASH_TRANSLATOR_PROVIDER=zhipu');
   }
 
-  const data = await res.json();
-  const translated = Array.isArray(data?.[0])
-    ? data[0].map(part => Array.isArray(part) ? (part[0] || '') : '').join('')
-    : text;
-  translationMemo.set(key, translated || text);
-  return translated || text;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), TRANSLATION_TIMEOUT_MS);
+
+  try {
+    const res = await fetch(ZHIPU_BASE_URL, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${ZHIPU_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      signal: controller.signal,
+      body: JSON.stringify({
+        model: ZHIPU_MODEL,
+        do_sample: false,
+        temperature: 0.1,
+        messages: [
+          {
+            role: 'system',
+            content: [
+              `Translate the user content into ${targetLocale}.`,
+              'Preserve Markdown structure exactly.',
+              'Do not add explanations, notes, or code fences.',
+              'Keep URLs, inline code, and fenced code blocks unchanged when present.',
+            ].join(' '),
+          },
+          {
+            role: 'user',
+            content: text,
+          },
+        ],
+      }),
+    });
+
+    if (!res.ok) {
+      const errorText = await res.text();
+      throw new Error(`Zhipu translation request failed with ${res.status}: ${errorText.slice(0, 200)}`);
+    }
+
+    const data = await res.json();
+    const translated = data?.choices?.[0]?.message?.content;
+    return typeof translated === 'string' && translated.trim() ? translated : text;
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 function splitLargeBlock(text, limit = 1600) {
@@ -440,6 +541,15 @@ async function resolveLocalizedSkill(skill, locale, { includeBody = false } = {}
       hasFallback: false,
       description: fm.description || originalDescription,
       body: includeBody ? stripFrontmatter(localizedMd) : '',
+    };
+  }
+
+  if (TRANSLATION_PROVIDER === 'original') {
+    return {
+      ...base,
+      body: includeBody ? originalBody : '',
+      hasFallback: true,
+      translationSource: 'fallback',
     };
   }
 
