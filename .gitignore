@@ -1,2 +1,6 @@
 .env
 .cache/
+node_modules/
+*.tgz
+npm-debug.log*
+.DS_Store
