@@ -8,7 +8,7 @@ const path = require('path');
 const os = require('os');
 const process = require('process');
 
-const PORT = 3847;
+const PORT = Number(process.env.PORT || 3847);
 const app = express();
 
 app.use(express.json());
@@ -48,7 +48,21 @@ function npxCommand(args) {
   return { command: 'npx', args: ['-y', ...args] };
 }
 
+function readFixtureSkills(global) {
+  const fixturePath = process.env.SKILL_DASHBOARD_FIXTURE;
+  if (!fixturePath) return null;
+  try {
+    const fixture = JSON.parse(fs.readFileSync(fixturePath, 'utf8'));
+    const list = global ? fixture.global : fixture.project;
+    return Array.isArray(list) ? list : [];
+  } catch {
+    return [];
+  }
+}
+
 function listSkills({ global = false, cwd } = {}) {
+  const fixture = readFixtureSkills(global);
+  if (fixture) return fixture;
   const args = ['skills', 'ls'];
   if (global) args.push('-g');
   args.push('--json');
@@ -66,18 +80,24 @@ function resolveProjectDir(value) {
   return resolved;
 }
 
-function findSkillByName(name, projectDir) {
+function listAllSkills(projectDir) {
   const globalSkills = listSkills({ global: true }).map(skill => ({ ...skill, scope: 'global' }));
   const projectSkills = projectDir
     ? listSkills({ cwd: projectDir }).map(skill => ({ ...skill, scope: 'project' }))
     : [];
-
-  return [...globalSkills, ...projectSkills].find(skill => skill.name === name) || null;
+  return [...globalSkills, ...projectSkills];
 }
 
-function readSkillMd(skillPath, locale) {
-  const filename = locale === 'zh-CN' ? 'SKILL.zh-CN.md' : 'SKILL.md';
-  const mdPath = path.join(skillPath, filename);
+function findSkill({ name, skillPath, scope, projectDir }) {
+  const skills = listAllSkills(projectDir);
+  if (skillPath) {
+    return skills.find(skill => skill.path === skillPath && (!scope || skill.scope === scope)) || null;
+  }
+  return skills.find(skill => skill.name === name && (!scope || skill.scope === scope)) || null;
+}
+
+function readSkillMd(skillPath) {
+  const mdPath = path.join(skillPath, 'SKILL.md');
   if (!fs.existsSync(mdPath)) return null;
   return fs.readFileSync(mdPath, 'utf8');
 }
@@ -220,51 +240,23 @@ function inferFunctionGroup(description, body) {
   return 'Other Utilities';
 }
 
-function resolveLocalizedSkill(skill, locale, { includeBody = false } = {}) {
-  const originalMd = readSkillMd(skill.path, 'en');
-  const originalFrontmatter = parseFrontmatter(originalMd);
-  const originalBody = stripFrontmatter(originalMd);
-  const originalDescription = originalFrontmatter.description || originalFrontmatter.name || skill.name;
-
-  const base = {
-    originalDescription,
-    originalBody,
-    resolvedLocale: 'en',
-    translationSource: 'original',
-    hasFallback: false,
-    description: originalDescription,
-    body: includeBody ? originalBody : '',
-  };
-
-  if (locale !== 'zh-CN' || !originalMd) return base;
-
-  const localizedMd = readSkillMd(skill.path, 'zh-CN');
-  if (localizedMd) {
-    const fm = parseFrontmatter(localizedMd);
-    return {
-      originalDescription,
-      originalBody,
-      resolvedLocale: 'zh-CN',
-      translationSource: 'manual',
-      hasFallback: false,
-      description: fm.description || originalDescription,
-      body: includeBody ? stripFrontmatter(localizedMd) : '',
-    };
-  }
+function resolveSkillContent(skill, { includeBody = false } = {}) {
+  const md = readSkillMd(skill.path);
+  const frontmatter = parseFrontmatter(md);
+  const body = stripFrontmatter(md);
+  const description = frontmatter.description || frontmatter.name || skill.name;
 
   return {
-    ...base,
-    body: includeBody ? originalBody : '',
-    hasFallback: true,
-    translationSource: 'fallback',
+    description,
+    body: includeBody ? body : '',
   };
 }
 
-function enrichSkill(skill, locale) {
-  const originalMd = readSkillMd(skill.path, 'en');
+function enrichSkill(skill) {
+  const originalMd = readSkillMd(skill.path);
   const fm = parseFrontmatter(originalMd);
   const body = stripFrontmatter(originalMd);
-  const localized = resolveLocalizedSkill(skill, locale, { includeBody: false });
+  const content = resolveSkillContent(skill, { includeBody: false });
   const installDate = getInstallDate(skill.path);
   const group = inferGroup(skill.path);
   const source = inferInstallSource(skill);
@@ -273,8 +265,7 @@ function enrichSkill(skill, locale) {
 
   return {
     ...skill,
-    description: localized.description,
-    originalDescription: localized.originalDescription,
+    description: content.description,
     userInvokable: fm['user-invokable'] === 'true',
     installDate,
     installDay: installDate ? installDate.slice(0, 10) : null,
@@ -283,28 +274,16 @@ function enrichSkill(skill, locale) {
     source,
     hasMd: !!originalMd,
     installCmd: source ? `npx skills add ${source}` : `npx skills add ${skill.name}`,
-    resolvedLocale: localized.resolvedLocale,
-    translationSource: localized.translationSource,
-    hasFallback: localized.hasFallback,
     sourceLink,
   };
 }
 
 app.get('/api/skills', async (req, res) => {
   let projectDir;
-  const locale = req.query.locale === 'zh-CN' ? 'zh-CN' : 'en';
 
   try {
     projectDir = resolveProjectDir(req.query.projectDir);
-    const globalSkills = listSkills({ global: true }).map(skill => ({ ...skill, scope: 'global' }));
-    const projectSkills = projectDir
-      ? listSkills({ cwd: projectDir }).map(skill => ({ ...skill, scope: 'project' }))
-      : [];
-
-    const globalNames = new Set(globalSkills.map(skill => skill.name));
-    const onlyProject = projectSkills.filter(skill => !globalNames.has(skill.name));
-    const allSkills = [...globalSkills, ...onlyProject];
-    const enriched = allSkills.map(skill => enrichSkill(skill, locale));
+    const enriched = listAllSkills(projectDir).map(skill => enrichSkill(skill));
 
     res.json({ skills: enriched, projectDir });
   } catch (error) {
@@ -315,26 +294,26 @@ app.get('/api/skills', async (req, res) => {
 app.get('/api/skills/:name/detail', async (req, res) => {
   const name = req.params.name;
   let projectDir;
-  const locale = req.query.locale === 'zh-CN' ? 'zh-CN' : 'en';
 
   try {
     projectDir = resolveProjectDir(req.query.projectDir);
-    const found = findSkillByName(name, projectDir);
+    const found = findSkill({
+      name,
+      skillPath: req.query.skillPath,
+      scope: req.query.scope,
+      projectDir,
+    });
     if (!found) {
       return res.status(404).json({ error: 'Skill not found' });
     }
-    const localized = resolveLocalizedSkill(found, locale, { includeBody: true });
-    const sourceLink = resolveSourceLink(found, readSkillMd(found.path, 'en'));
+    const content = resolveSkillContent(found, { includeBody: true });
+    const sourceLink = resolveSourceLink(found, readSkillMd(found.path));
     res.json({
       name,
       path: found.path,
-      description: localized.description,
-      originalDescription: localized.originalDescription,
-      skillsMdBody: localized.body,
-      skillsMdOriginalBody: localized.originalBody,
-      resolvedLocale: localized.resolvedLocale,
-      translationSource: localized.translationSource,
-      hasFallback: localized.hasFallback,
+      scope: found.scope,
+      description: content.description,
+      skillsMdBody: content.body,
       sourceLink,
     });
   } catch (error) {
@@ -409,6 +388,7 @@ const server = app.listen(PORT, async () => {
   const url = `http://localhost:${PORT}`;
   console.log(`\n🚀  Skill Dashboard running at ${url}`);
   console.log(`   Project context: ${process.cwd()}\n`);
+  if (process.env.SKILL_DASHBOARD_NO_OPEN === '1') return;
   try {
     const { default: open } = await import('open');
     open(url);

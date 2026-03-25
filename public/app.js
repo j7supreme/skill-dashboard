@@ -4,186 +4,85 @@
 'use strict';
 
 const UI_STRINGS = {
-  en: {
-    appTitle: 'Skill Dashboard',
-    appDescription: 'Manage your installed agent skills — view, group, update, and uninstall from one place.',
-    searchPlaceholder: 'Search skills…',
-    clearSearch: 'Clear search',
-    viewMode: 'View mode',
-    gridView: 'Grid view',
-    listView: 'List view',
-    filterAgent: 'Filter by Agent',
-    filterFunction: 'Filter by Function',
-    sortSkills: 'Sort skills',
-    allAgents: 'All Agents',
-    allFunctions: 'All Functions',
-    sortNewest: 'Newest installed',
-    sortOldest: 'Oldest installed',
-    sortName: 'Name A-Z',
-    refreshSkills: 'Refresh skills',
-    toggleTheme: 'Toggle light/dark',
-    skillScope: 'Skill scope',
-    globalSkills: 'Global Skills',
-    projectSkills: 'Project Skills',
-    loadingSkills: 'Loading skills…',
-    loadingSkillDetails: 'Loading skill details…',
-    noSkillsFound: 'No skills found',
-    noProjectSkillsFound: 'No skills found in this project',
-    showingSkillsIn: 'Showing Skills in {name}',
-    currentProject: 'current project',
-    changeProject: 'change project',
-    projectPathLabel: 'Project Path',
-    projectPathPlaceholder: '/path/to/project',
-    applyProjectPath: 'Apply Path',
-    recentProjects: 'Recent Projects',
-    tryDifferentSearch: 'Switch to another project folder, or install a skill with',
-    path: 'Path',
-    compatibleAgents: 'Compatible Agents',
-    installDate: 'Install Date',
-    skillOverview: 'Skill Overview',
-    closeDetail: 'Close detail panel',
-    viewSource: 'View Source',
-    copyInstallCommand: 'Copy Install Command',
-    cancel: 'Cancel',
-    confirm: 'Confirm',
-    details: 'Details',
-    moreActions: 'More actions',
-    moreCount: '+{count} more',
-    actionUpdate: 'Update',
-    actionReinstall: 'Reinstall',
-    actionCopy: 'Copy install command',
-    actionUninstall: 'Uninstall',
-    installCopied: 'Install command copied!',
-    uninstalling: 'Uninstalling…',
-    updating: 'Updating…',
-    reinstalling: 'Reinstalling…',
-    uninstalled: '"{name}" uninstalled',
-    updated: '"{name}" updated',
-    reinstalled: '"{name}" reinstalled',
-    uninstallTitle: 'Uninstall "{name}"?',
-    uninstallBodyGlobal: 'This will remove the skill from your global installation.',
-    uninstallBodyProject: 'This will remove the skill from your project installation.',
-    updateTitle: 'Update "{name}"?',
-    updateBody: 'This will pull the latest version of this skill.',
-    reinstallTitle: 'Reinstall "{name}"?',
-    reinstallBody: 'This will remove and re-add the skill. Any custom modifications may be lost.',
-    unknown: 'Unknown',
-    noDescription: 'No description available',
-    noSkillDoc: 'No SKILL.md found.',
-    docTranslated: 'Displaying Simplified Chinese translation',
-    docFallback: 'Chinese translation not generated yet. Showing original English.',
-    scopeGlobal: 'global',
-    scopeProject: 'project',
-    userInvokable: 'user-invokable',
-    languageLabel: 'Language',
-    languageEnglish: 'English',
-    languageChinese: '简体中文',
-    zhPromptTitle: 'Chinese content requires a local agent',
-    zhPromptBody: 'The dashboard now keeps English as the default source. To view Chinese skill docs, run your local agent to generate SKILL.zh-CN.md files, then refresh.',
-    zhPromptAction: 'Copy agent prompt',
-    zhPromptDismiss: 'Continue with English',
-    zhPromptCopied: 'Agent prompt copied.',
-    footerMadeBy: 'Made by J7Supreme',
-    functionAnalysis: 'Analysis & Review',
-    functionCode: 'Code & Development',
-    functionContent: 'Content & Communication',
-    functionWorkflow: 'Workflow & Tooling',
-    functionDesign: 'Design & UI',
-    functionOther: 'Other Utilities',
-    errorLoadingSkills: 'Error loading skills: {message}',
-    errorLoadingDetails: 'Error loading details: {message}',
-    errorInvalidProjectDir: 'Project path not found: {path}',
-  },
-  'zh-CN': {
-    appTitle: '技能面板',
-    appDescription: '统一查看、分组、更新和卸载已安装的 agent skills。',
-    searchPlaceholder: '搜索 skills…',
-    clearSearch: '清空搜索',
-    viewMode: '视图模式',
-    gridView: '网格视图',
-    listView: '列表视图',
-    filterAgent: '按 Agent 筛选',
-    filterFunction: '按功能筛选',
-    sortSkills: '排序 skills',
-    allAgents: '全部 Agents',
-    allFunctions: '全部功能',
-    sortNewest: '最近安装',
-    sortOldest: '最早安装',
-    sortName: '名称 A-Z',
-    refreshSkills: '刷新 skills',
-    toggleTheme: '切换明暗主题',
-    skillScope: 'Skill 范围',
-    globalSkills: '全局 Skills',
-    projectSkills: '项目 Skills',
-    loadingSkills: '正在加载 skills…',
-    loadingSkillDetails: '正在加载技能详情…',
-    noSkillsFound: '未找到 skills',
-    noProjectSkillsFound: '未找到安装在项目的skills',
-    showingSkillsIn: 'Showing Skills in {name}',
-    currentProject: '当前项目',
-    changeProject: 'change project',
-    projectPathLabel: '项目路径',
-    projectPathPlaceholder: '/path/to/project',
-    applyProjectPath: '应用路径',
-    recentProjects: '最近项目',
-    tryDifferentSearch: '切换到其他项目文件夹，或使用以下命令安装 skill：',
-    path: '路径',
-    compatibleAgents: '兼容 Agents',
-    installDate: '安装时间',
-    skillOverview: '技能概览',
-    closeDetail: '关闭详情面板',
-    viewSource: '查看来源',
-    copyInstallCommand: '复制安装命令',
-    cancel: '取消',
-    confirm: '确认',
-    details: '详情',
-    moreActions: '更多操作',
-    moreCount: '+{count} 个更多',
-    actionUpdate: '更新',
-    actionReinstall: '重装',
-    actionCopy: '复制安装命令',
-    actionUninstall: '卸载',
-    installCopied: '已复制安装命令',
-    uninstalling: '正在卸载…',
-    updating: '正在更新…',
-    reinstalling: '正在重装…',
-    uninstalled: '已卸载 “{name}”',
-    updated: '已更新 “{name}”',
-    reinstalled: '已重装 “{name}”',
-    uninstallTitle: '卸载 “{name}”？',
-    uninstallBodyGlobal: '这会从你的全局安装中移除该 skill。',
-    uninstallBodyProject: '这会从你的项目安装中移除该 skill。',
-    updateTitle: '更新 “{name}”？',
-    updateBody: '这会拉取该 skill 的最新版本。',
-    reinstallTitle: '重装 “{name}”？',
-    reinstallBody: '这会先删除再重新添加该 skill。任何自定义修改都可能丢失。',
-    unknown: '未知',
-    noDescription: '暂无描述',
-    noSkillDoc: '未找到 SKILL.md。',
-    docTranslated: '当前显示简体中文译文',
-    docFallback: '尚未生成简体中文文档，当前显示英文原文',
-    scopeGlobal: '全局',
-    scopeProject: '项目',
-    userInvokable: '可由用户触发',
-    languageLabel: '语言',
-    languageEnglish: 'English',
-    languageChinese: '简体中文',
-    zhPromptTitle: '中文内容需要本地 Agent',
-    zhPromptBody: '面板默认保留英文原文。若要查看中文 skill 文档，请使用你自己的本地 agent 生成 SKILL.zh-CN.md 文件，然后刷新页面。',
-    zhPromptAction: '复制 Agent 指令',
-    zhPromptDismiss: '继续看英文',
-    zhPromptCopied: '已复制 Agent 指令',
-    footerMadeBy: 'J7Supreme 制作',
-    functionAnalysis: '分析与评审',
-    functionCode: '代码与开发',
-    functionContent: '内容与沟通',
-    functionWorkflow: '工作流与工具',
-    functionDesign: '设计与界面',
-    functionOther: '其他工具',
-    errorLoadingSkills: '加载 skills 失败：{message}',
-    errorLoadingDetails: '加载详情失败：{message}',
-    errorInvalidProjectDir: '项目路径不存在：{path}',
-  },
+  appTitle: 'Skill Dashboard',
+  appDescription: 'Manage your installed agent skills — view, group, update, and uninstall from one place.',
+  searchPlaceholder: 'Search skills…',
+  clearSearch: 'Clear search',
+  viewMode: 'View mode',
+  gridView: 'Grid view',
+  listView: 'List view',
+  filterAgent: 'Filter by Agent',
+  filterFunction: 'Filter by Function',
+  sortSkills: 'Sort skills',
+  allAgents: 'All Agents',
+  allFunctions: 'All Functions',
+  sortNewest: 'Newest installed',
+  sortOldest: 'Oldest installed',
+  sortName: 'Name A-Z',
+  refreshSkills: 'Refresh skills',
+  toggleTheme: 'Toggle light/dark',
+  skillScope: 'Skill scope',
+  globalSkills: 'Global Skills',
+  projectSkills: 'Project Skills',
+  loadingSkills: 'Loading skills…',
+  loadingSkillDetails: 'Loading skill details…',
+  noSkillsFound: 'No skills found',
+  noProjectSkillsFound: 'No skills found in this project',
+  showingSkillsIn: 'Showing Skills in {name}',
+  currentProject: 'current project',
+  changeProject: 'change project',
+  projectPathLabel: 'Project Path',
+  projectPathPlaceholder: '/path/to/project',
+  applyProjectPath: 'Apply Path',
+  recentProjects: 'Recent Projects',
+  tryDifferentSearch: 'Switch to another project folder, or install a skill with',
+  path: 'Path',
+  compatibleAgents: 'Compatible Agents',
+  installDate: 'Install Date',
+  skillOverview: 'Skill Overview',
+  closeDetail: 'Close detail panel',
+  viewSource: 'View Source',
+  copyInstallCommand: 'Copy Install Command',
+  cancel: 'Cancel',
+  confirm: 'Confirm',
+  details: 'Details',
+  moreActions: 'More actions',
+  moreCount: '+{count} more',
+  actionUpdate: 'Update',
+  actionReinstall: 'Reinstall',
+  actionCopy: 'Copy install command',
+  actionUninstall: 'Uninstall',
+  installCopied: 'Install command copied!',
+  uninstalling: 'Uninstalling…',
+  updating: 'Updating…',
+  reinstalling: 'Reinstalling…',
+  uninstalled: '"{name}" uninstalled',
+  updated: '"{name}" updated',
+  reinstalled: '"{name}" reinstalled',
+  uninstallTitle: 'Uninstall "{name}"?',
+  uninstallBodyGlobal: 'This will remove the skill from your global installation.',
+  uninstallBodyProject: 'This will remove the skill from your project installation.',
+  updateTitle: 'Update "{name}"?',
+  updateBody: 'This will pull the latest version of this skill.',
+  reinstallTitle: 'Reinstall "{name}"?',
+  reinstallBody: 'This will remove and re-add the skill. Any custom modifications may be lost.',
+  unknown: 'Unknown',
+  noDescription: 'No description available',
+  noSkillDoc: 'No SKILL.md found.',
+  scopeGlobal: 'global',
+  scopeProject: 'project',
+  userInvokable: 'user-invokable',
+  footerMadeBy: 'Made by J7Supreme',
+  functionAnalysis: 'Analysis & Review',
+  functionCode: 'Code & Development',
+  functionContent: 'Content & Communication',
+  functionWorkflow: 'Workflow & Tooling',
+  functionDesign: 'Design & UI',
+  functionOther: 'Other Utilities',
+  errorLoadingSkills: 'Error loading skills: {message}',
+  errorLoadingDetails: 'Error loading details: {message}',
+  errorInvalidProjectDir: 'Project path not found: {path}',
+  errorCopyInstall: 'Failed to copy install command: {message}',
 };
 
 const FUNCTION_GROUP_LABELS = {
@@ -209,8 +108,6 @@ const state = {
   openDropdown: null,
   projectPanelOpen: false,
   detailSkill: null,
-  locale: detectInitialLocale(),
-  zhPromptDismissed: false,
 };
 
 const $ = id => document.getElementById(id);
@@ -222,7 +119,6 @@ const els = {
   sortSelect: $('sortSelect'),
   agentSelect: $('agentSelect'),
   functionSelect: $('functionSelect'),
-  languageSelect: $('languageSelect'),
   refreshBtn: $('refreshBtn'),
   themeBtn: $('themeBtn'),
   tabs: document.querySelectorAll('.tab'),
@@ -279,41 +175,37 @@ let currentSourceUrl = null;
 let confirmCallback = null;
 let confirmOptions = null;
 
-function detectInitialLocale() {
-  const stored = localStorage.getItem('skill-dash-locale');
-  if (stored && UI_STRINGS[stored]) return stored;
-  return 'en';
-}
-
 function t(key, params = {}) {
-  const dict = UI_STRINGS[state.locale] || UI_STRINGS.en;
-  const fallback = UI_STRINGS.en[key] || key;
-  return (dict[key] || fallback).replace(/\{(\w+)\}/g, (_, name) => params[name] ?? '');
+  const value = UI_STRINGS[key] || key;
+  return value.replace(/\{(\w+)\}/g, (_, name) => params[name] ?? '');
 }
 
 function localizedFunctionGroup(label) {
   return t(FUNCTION_GROUP_LABELS[label] || 'functionOther');
 }
 
-function buildApiUrl(path, { includeLocale = true, includeProjectDir = false } = {}) {
+function buildApiUrl(path, { includeProjectDir = false, query = {} } = {}) {
   const url = new URL(path, window.location.origin);
-  if (includeLocale) {
-    url.searchParams.set('locale', state.locale);
-  }
   if (includeProjectDir && state.projectDir) {
     url.searchParams.set('projectDir', state.projectDir);
   }
+  Object.entries(query).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== '') {
+      url.searchParams.set(key, value);
+    }
+  });
   return `${url.pathname}${url.search}`;
 }
 
 async function fetchSkills() {
   const res = await fetch(buildApiUrl('/api/skills', { includeProjectDir: true }));
-  if (!res.ok) throw new Error('Failed to load skills');
-  return res.json();
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to load skills');
+  return data;
 }
 
 async function apiAction(path, body) {
-  const res = await fetch(buildApiUrl(path, { includeLocale: false, includeProjectDir: true }), {
+  const res = await fetch(buildApiUrl(path, { includeProjectDir: true }), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -326,20 +218,17 @@ async function apiAction(path, body) {
   return data;
 }
 
-async function fetchDetail(name) {
-  const res = await fetch(buildApiUrl(`/api/skills/${encodeURIComponent(name)}/detail`, { includeProjectDir: true }));
-  if (!res.ok) throw new Error('Failed to load details');
-  return res.json();
-}
-
-function buildAgentTranslationPrompt() {
-  return [
-    'Translate installed skill docs into Simplified Chinese.',
-    'For each target skill, read SKILL.md and create SKILL.zh-CN.md next to it.',
-    'Preserve frontmatter keys, markdown structure, code fences, inline code, and links.',
-    'Keep command names and file paths unchanged.',
-    'Only add SKILL.zh-CN.md files; do not modify SKILL.md.',
-  ].join('\n');
+async function fetchDetail(skill) {
+  const res = await fetch(buildApiUrl(`/api/skills/${encodeURIComponent(skill.name)}/detail`, {
+    includeProjectDir: true,
+    query: {
+      skillPath: skill.path,
+      scope: skill.scope,
+    },
+  }));
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to load details');
+  return data;
 }
 
 function normalizeProjectDir(value) {
@@ -473,7 +362,7 @@ function populateDropdowns() {
   });
 
   els.agentSelect.innerHTML = `<option value="all">${t('allAgents')}</option>` +
-    [...agents].sort().map(agent => `<option value="${agent}">${agent}</option>`).join('');
+    [...agents].sort().map(agent => `<option value="${safeText(agent)}">${safeText(agent)}</option>`).join('');
   els.agentSelect.value = state.agent;
 
   els.functionSelect.innerHTML = `<option value="all">${t('allFunctions')}</option>` +
@@ -498,7 +387,6 @@ function applyFilters() {
     list = list.filter(skill =>
       skill.name.toLowerCase().includes(query) ||
       (skill.description || '').toLowerCase().includes(query) ||
-      (skill.originalDescription || '').toLowerCase().includes(query) ||
       (skill.agents || []).some(agent => agent.toLowerCase().includes(query))
     );
   }
@@ -581,6 +469,23 @@ function render() {
   }
 }
 
+function safeText(value) {
+  return escapeHtml(value == null || value === '' ? '' : String(value));
+}
+
+function sanitizeUrl(value) {
+  if (!value) return null;
+  try {
+    const url = new URL(String(value), window.location.origin);
+    if (url.protocol === 'http:' || url.protocol === 'https:') {
+      return url.href;
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
 function buildCard(skill) {
   const card = document.createElement('div');
   card.className = 'skill-card';
@@ -590,8 +495,8 @@ function buildCard(skill) {
   card.innerHTML = `
     <div class="card-top">
       <div class="card-info">
-        <div class="card-name" title="${skill.name}">${skill.name}</div>
-        <div class="card-description">${skill.description || t('noDescription')}</div>
+        <div class="card-name" title="${safeText(skill.name)}">${safeText(skill.name)}</div>
+        <div class="card-description">${safeText(skill.description || t('noDescription'))}</div>
       </div>
     </div>
     <div class="card-badges">${agentBadges}</div>
@@ -622,8 +527,8 @@ function buildListRow(skill) {
 
   row.innerHTML = `
     <div class="card-info">
-      <div class="card-name">${skill.name}</div>
-      <div class="card-description">${skill.description || ''}</div>
+      <div class="card-name">${safeText(skill.name)}</div>
+      <div class="card-description">${safeText(skill.description || '')}</div>
     </div>
     <div class="card-badges">${agentBadges}</div>
     <div class="list-actions">
@@ -647,7 +552,7 @@ function buildListRow(skill) {
 
 function buildAgentBadges(agents) {
   const max = 3;
-  let html = agents.slice(0, max).map(agent => `<span class="badge badge-agent">${agent}</span>`).join('');
+  let html = agents.slice(0, max).map(agent => `<span class="badge badge-agent">${safeText(agent)}</span>`).join('');
   if (agents.length > max) {
     html += `<span class="badge badge-more-agents">${t('moreCount', { count: agents.length - max })}</span>`;
   }
@@ -690,8 +595,12 @@ function closeDropdown() {
 
 async function handleAction(action, skill) {
   if (action === 'copy') {
-    await navigator.clipboard.writeText(skill.installCmd || `npx skills add ${skill.name}`);
-    showToast(t('installCopied'), 'success');
+    try {
+      await navigator.clipboard.writeText(skill.installCmd || `npx skills add ${skill.name}`);
+      showToast(t('installCopied'), 'success');
+    } catch (error) {
+      showToast(t('errorCopyInstall', { message: error.message || t('unknown') }), 'error');
+    }
     return;
   }
 
@@ -765,7 +674,7 @@ async function openDetail(skill) {
   els.detailBadges.innerHTML = `
     <span class="badge badge-scope-${skill.scope}">${skill.scope === 'global' ? t('scopeGlobal') : t('scopeProject')}</span>
     ${skill.userInvokable ? `<span class="badge badge-invokable">⚡ ${t('userInvokable')}</span>` : ''}`;
-  els.detailAgents.innerHTML = (skill.agents || []).map(agent => `<span class="badge badge-agent">${agent}</span>`).join('');
+  els.detailAgents.innerHTML = (skill.agents || []).map(agent => `<span class="badge badge-agent">${safeText(agent)}</span>`).join('');
   els.detailDocNotice.textContent = '';
   els.detailMd.innerHTML = `<p>${escapeHtml(t('loadingSkillDetails'))}</p>`;
   updateSourceButton(skill.sourceLink);
@@ -774,23 +683,16 @@ async function openDetail(skill) {
   els.detailPanel.classList.remove('hidden');
 
   try {
-    const detail = await fetchDetail(skill.name);
-    if (!state.detailSkill || state.detailSkill.name !== skill.name) return;
+    const detail = await fetchDetail(skill);
+    if (!state.detailSkill || state.detailSkill.path !== skill.path) return;
     els.detailDescription.textContent = detail.description || skill.description || '';
-    els.detailDocNotice.textContent = detailNotice(detail);
-    els.detailMd.innerHTML = renderMarkdown(detail.skillsMdBody || detail.skillsMdOriginalBody || t('noSkillDoc'));
+    els.detailDocNotice.textContent = '';
+    els.detailMd.innerHTML = renderMarkdown(detail.skillsMdBody || t('noSkillDoc'));
     updateSourceButton(detail.sourceLink || skill.sourceLink);
   } catch (error) {
     els.detailDocNotice.textContent = '';
     els.detailMd.innerHTML = `<p>${escapeHtml(t('errorLoadingDetails', { message: error.message }))}</p>`;
   }
-}
-
-function detailNotice(detail) {
-  if (state.locale !== 'zh-CN') return '';
-  if (detail.hasFallback) return t('docFallback');
-  if (detail.resolvedLocale === 'zh-CN') return t('docTranslated');
-  return '';
 }
 
 function closeDetail() {
@@ -812,7 +714,7 @@ function updateSourceButton(sourceLink) {
 function formatInstallDate(value) {
   if (!value) return t('unknown');
   try {
-    return new Intl.DateTimeFormat(state.locale, {
+    return new Intl.DateTimeFormat('en', {
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
@@ -867,8 +769,14 @@ function renderMarkdownBlock(block) {
 }
 
 function renderInline(text) {
-  return text
-    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noreferrer">$1</a>')
+  const withLinks = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, label, href) => {
+    const safeHref = sanitizeUrl(href);
+    const safeLabel = label;
+    if (!safeHref) return safeLabel;
+    return `<a href="${safeHref}" target="_blank" rel="noreferrer">${safeLabel}</a>`;
+  });
+
+  return withLinks
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     .replace(/`([^`]+)`/g, '<code>$1</code>');
 }
@@ -905,25 +813,8 @@ function showToast(message, type = '') {
   toastTimer = setTimeout(() => els.toast.classList.add('hidden'), 3000);
 }
 
-function showChineseAgentPrompt() {
-  confirmAction(
-    t('zhPromptTitle'),
-    t('zhPromptBody'),
-    async () => {
-      await navigator.clipboard.writeText(buildAgentTranslationPrompt());
-      state.zhPromptDismissed = true;
-      showToast(t('zhPromptCopied'), 'success');
-    },
-    {
-      cancelLabel: t('zhPromptDismiss'),
-      confirmLabel: t('zhPromptAction'),
-      confirmClass: 'btn btn-primary',
-    }
-  );
-}
-
 function applyTranslations() {
-  document.documentElement.lang = state.locale;
+  document.documentElement.lang = 'en';
   document.title = t('appTitle');
   const descriptionMeta = document.querySelector('meta[name="description"]');
   if (descriptionMeta) descriptionMeta.setAttribute('content', t('appDescription'));
@@ -963,11 +854,6 @@ function applyTranslations() {
     els.confirmCancel.textContent = t('cancel');
     els.confirmOk.textContent = t('confirm');
   }
-  els.languageSelect.setAttribute('aria-label', t('languageLabel'));
-  els.languageSelect.innerHTML = `
-    <option value="en">${t('languageEnglish')}</option>
-    <option value="zh-CN">${t('languageChinese')}</option>`;
-  els.languageSelect.value = state.locale;
   els.footerText.textContent = t('footerMadeBy');
 
   els.sortSelect.innerHTML = `
@@ -975,19 +861,6 @@ function applyTranslations() {
     <option value="oldest">${t('sortOldest')}</option>
     <option value="name">${t('sortName')}</option>`;
   els.sortSelect.value = state.sort;
-}
-
-function setLocale(locale) {
-  const nextLocale = UI_STRINGS[locale] ? locale : 'en';
-  const shouldPrompt = nextLocale === 'zh-CN' && state.locale !== 'zh-CN';
-  state.locale = UI_STRINGS[locale] ? locale : 'en';
-  localStorage.setItem('skill-dash-locale', state.locale);
-  applyTranslations();
-  loadSkills();
-  if (state.detailSkill) openDetail(state.detailSkill);
-  if (shouldPrompt && !state.zhPromptDismissed) {
-    showChineseAgentPrompt();
-  }
 }
 
 els.search.addEventListener('input', () => {
@@ -1033,7 +906,6 @@ els.functionSelect.addEventListener('change', () => {
   state.fn = els.functionSelect.value;
   applyFilters();
 });
-els.languageSelect.addEventListener('change', () => setLocale(els.languageSelect.value));
 els.refreshBtn.addEventListener('click', () => {
   els.refreshBtn.style.transform = 'rotate(360deg)';
   loadSkills();
@@ -1086,12 +958,16 @@ els.detailClose.addEventListener('click', closeDetail);
 els.detailOverlay.addEventListener('click', closeDetail);
 els.detailSkillsShBtn.addEventListener('click', () => {
   if (!currentSourceUrl) return;
-  window.open(currentSourceUrl, '_blank');
+  window.open(currentSourceUrl, '_blank', 'noopener');
 });
 els.detailCopyBtn.addEventListener('click', async () => {
   if (!state.detailSkill) return;
-  await navigator.clipboard.writeText(state.detailSkill.installCmd || `npx skills add ${state.detailSkill.name}`);
-  showToast(t('installCopied'), 'success');
+  try {
+    await navigator.clipboard.writeText(state.detailSkill.installCmd || `npx skills add ${state.detailSkill.name}`);
+    showToast(t('installCopied'), 'success');
+  } catch (error) {
+    showToast(t('errorCopyInstall', { message: error.message || t('unknown') }), 'error');
+  }
 });
 
 els.confirmCancel.addEventListener('click', closeConfirm);
