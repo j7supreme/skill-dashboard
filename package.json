@@ -1,6 +1,6 @@
 {
   "name": "@j7supreme/skill-dashboard",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "J7Supreme Skill Dashboard: a local web UI to manage your installed agent skills",
   "main": "server.js",
   "bin": {
