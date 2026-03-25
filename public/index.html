@@ -14,7 +14,7 @@
     <div class="topbar-left">
       <div class="logo">
         <span class="logo-icon">⚡</span>
-        <span class="logo-text">Skill Dashboard</span>
+        <span class="logo-text" id="logoText">Skill Dashboard</span>
       </div>
     </div>
     <div class="topbar-center">
@@ -53,6 +53,13 @@
       <button class="btn btn-outline icon-btn" id="refreshBtn" title="Refresh skills">↺</button>
       <button class="btn btn-outline icon-btn" id="themeBtn" title="Toggle light/dark">◑</button>
     </div>
+    <div class="language-wrap">
+      <label for="languageSelect" class="sr-only">Language</label>
+      <select id="languageSelect" class="sort-select" aria-label="Language">
+        <option value="en">English</option>
+        <option value="zh-CN">简体中文</option>
+      </select>
+    </div>
   </header>
 
   <!-- Scope Tabs -->
@@ -65,12 +72,12 @@
   <main class="main">
     <div id="loadingState" class="loading-state">
       <div class="spinner"></div>
-      <p>Loading skills…</p>
+      <p id="loadingText">Loading skills…</p>
     </div>
     <div id="emptyState" class="empty-state hidden">
-      <p class="empty-icon">🌵</p>
-      <p class="empty-text">No skills found</p>
-      <p class="empty-sub">Try a different search or install a skill with <code>npx skills add …</code></p>
+      <img class="empty-icon" src="./no content.png" alt="" />
+      <p class="empty-text" id="emptyText">No skills found</p>
+      <p class="empty-sub"><span id="emptySubPrefix">Try a different search or install a skill with </span><code>npx skills add …</code></p>
     </div>
     <div id="skillsContainer" class="skills-container hidden"></div>
   </main>
@@ -88,19 +95,20 @@
     </div>
     <div class="detail-body">
       <div class="detail-section">
-        <h3 class="detail-section-title">Path</h3>
+        <h3 class="detail-section-title" id="detailPathTitle">Path</h3>
         <p id="detailPath" class="detail-path mono"></p>
       </div>
       <div class="detail-section">
-        <h3 class="detail-section-title">Compatible Agents</h3>
+        <h3 class="detail-section-title" id="detailAgentsTitle">Compatible Agents</h3>
         <div id="detailAgents" class="detail-agents"></div>
       </div>
       <div class="detail-section">
-        <h3 class="detail-section-title">Install Date</h3>
+        <h3 class="detail-section-title" id="detailInstallDateTitle">Install Date</h3>
         <p id="detailInstallDate" class="detail-path mono"></p>
       </div>
       <div class="detail-section">
-        <h3 class="detail-section-title">Skill Overview</h3>
+        <h3 class="detail-section-title" id="detailOverviewTitle">Skill Overview</h3>
+        <p id="detailDocNotice" class="detail-doc-notice"></p>
         <div id="detailMd" class="detail-md"></div>
       </div>
     </div>
@@ -131,7 +139,7 @@
         <path d="M 140 72 L 270 72 L 400 242 L 100 242 L 100 157 L 205 157 Z" fill="currentColor" />
         <path d="M 100 258 L 400 258 L 270 428 L 140 428 L 205 343 L 100 343 Z" fill="currentColor" />
       </svg>
-      <span class="site-footer-text">Made by J7Supreme</span>
+      <span class="site-footer-text" id="footerText">Made by J7Supreme</span>
     </div>
   </footer>
 
